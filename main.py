@@ -66,4 +66,51 @@ class LocalLLM:
 
             prompt = self._safe_truncate(prompt)
 
-            response = self.llm.create_chat_completion
+            response = self.llm.create_chat_completion(
+                messages=[
+                    {"role": "system", "content": "You are a helpful academic assistant."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=self.temperature,
+                max_tokens=max_tokens,
+            )
+
+            return response["choices"][0]["message"]["content"].strip()
+
+        except Exception as e:
+            logger.error(f"LLM generation failed: {e}")
+            return "Summary unavailable due to model limitation."
+
+    # --------------------------------------------------------
+    # Message Formatting
+    # --------------------------------------------------------
+
+    def _format_messages(self, messages: List[Dict[str, str]]) -> str:
+        formatted = ""
+        for m in messages:
+            formatted += f"{m['role'].upper()}:\n{m['content']}\n\n"
+        return formatted
+
+
+# ============================================================
+# Global LLM Interface
+# ============================================================
+
+_GLOBAL_LLM: Optional[LocalLLM] = None
+
+
+def set_global_llm(
+    model_path: str = DEFAULT_MODEL_PATH,
+    lang: str = "English",
+):
+    global _GLOBAL_LLM
+
+    _GLOBAL_LLM = LocalLLM(model_path=model_path)
+
+    logger.info(f"Local LLM initialized (Language={lang})")
+
+
+def get_global_llm() -> LocalLLM:
+    if _GLOBAL_LLM is None:
+        raise RuntimeError("Global LLM not initialized.")
+    return _GLOBAL_LLM
